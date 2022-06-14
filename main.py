@@ -108,7 +108,7 @@ if __name__ == '__main__':
         args.inference_dataset_class = tools.module_to_dict(datasets)[args.inference_dataset]
 
         args.cuda = not args.no_cuda and torch.cuda.is_available()
-        args.current_hash = subprocess.check_output(["git", "rev-parse", "HEAD"]).rstrip()
+#         args.current_hash = subprocess.check_output(["git", "rev-parse", "HEAD"]).rstrip()
         args.log_file = join(args.save, 'args.txt')
 
         # dict to collect activation gradients (for training debug purpose)
@@ -121,7 +121,7 @@ if __name__ == '__main__':
             args.inference_dir = "{}/inference".format(args.save)
 
     print('Source Code')
-    print(('  Current Git Hash: {}\n'.format(args.current_hash)))
+#     print(('  Current Git Hash: {}\n'.format(args.current_hash)))
 
     # Change the title for `top` and `pkill` commands
     setproctitle.setproctitle(args.save)
@@ -273,7 +273,11 @@ if __name__ == '__main__':
             loss_values = [v.item() for v in losses]
 
             # gather loss_labels, direct return leads to recursion limit error as it looks for variables to gather'
-            loss_labels = list(model.module.loss.loss_labels)
+            #loss_labels = list(model.module.loss.loss_labels)
+            if type(model.module.loss.loss_labels) is tuple:
+                loss_labels = list(model.module.loss.loss_labels[0])
+            else:
+                loss_labels = list(model.module.loss.loss_labels)
 
             assert not np.isnan(total_loss)
 

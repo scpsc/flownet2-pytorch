@@ -364,6 +364,70 @@ class ImagesFromFolder(data.Dataset):
   def __len__(self):
     return self.size * self.replicates
 
+class ImagesFromFolderEQ(data.Dataset):
+  def __init__(self, args, is_cropped, root = '/path/to/frames/only/folder', iext = 'png', replicates = 1):
+    self.args = args
+    self.is_cropped = is_cropped
+    self.crop_size = args.crop_size
+    self.render_size = args.inference_size
+    self.replicates = replicates
+
+    image_root = join(root, 'images')
+    flow_root = join(root, 'flow')
+
+    self.image_list = []
+    self.flow_list = []
+
+    with open(root+'.txt') as f:
+        for l in f:
+            im1, im2 = l.strip().split()
+            im1_path = os.path.join(image_root, im1)
+            im2_path = os.path.join(image_root, im2)
+            self.image_list += [ [ im1_path, im2_path ] ]
+            self.flow_list += [join(
+                    flow_root,
+                    '{}.flo'.format(im1.split('.')[0])
+                )]
+
+    self.size = len(self.image_list)
+
+    self.frame_size = frame_utils.read_gen(self.image_list[0][0]).shape
+
+    if (self.render_size[0] < 0) or (self.render_size[1] < 0) or (self.frame_size[0]%64) or (self.frame_size[1]%64):
+        self.render_size[0] = ( (self.frame_size[0])//64 ) * 64
+        self.render_size[1] = ( (self.frame_size[1])//64 ) * 64
+
+    args.inference_size = self.render_size
+
+    assert (len(self.image_list) == len(self.flow_list))
+
+  def __getitem__(self, index):
+    index = index % self.size
+
+    img1 = frame_utils.read_gen(self.image_list[index][0])
+    img2 = frame_utils.read_gen(self.image_list[index][1])
+
+    images = [img1, img2]
+    image_size = img1.shape[:2]
+    if self.is_cropped:
+        cropper = StaticRandomCrop(image_size, self.crop_size)
+    else:
+        cropper = StaticCenterCrop(image_size, self.render_size)
+    images = list(map(cropper, images))
+
+    images = np.array(images).transpose(3,0,1,2)
+    images = torch.from_numpy(images.astype(np.float32))
+
+    flow = frame_utils.read_gen(self.flow_list[index])
+    flow = cropper(flow)
+    flow = flow.transpose(2,0,1)
+    flow = torch.from_numpy(flow.astype(np.float32))
+
+    return [images], [flow]
+
+  def __len__(self):
+    return self.size * self.replicates
+
 '''
 import argparse
 import sys, os
