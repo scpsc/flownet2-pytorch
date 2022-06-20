@@ -317,7 +317,8 @@ if __name__ == '__main__':
             progress.set_description(title + ' ' + tools.format_dictionary_of_losses(loss_labels, statistics[-1]))
 
             if ((((global_iteration + 1) % args.log_frequency) == 0 and not is_validate) or
-                (is_validate and batch_idx == args.validation_n_batches - 1)):
+                (is_validate)):
+#                 (is_validate and batch_idx == args.validation_n_batches - 1)):
 
                 global_iteration = global_iteration if not is_validate else start_iteration
 
