@@ -386,7 +386,7 @@ class ImagesFromFolderEQ(data.Dataset):
             self.image_list += [ [ im1_path, im2_path ] ]
             self.flow_list += [join(
                     flow_root,
-                    '{}.flo'.format(im1.split('.')[0])
+                    '{}.flo'.format(im2.split('_x')[0])
                 )]
 
     self.size = len(self.image_list)
