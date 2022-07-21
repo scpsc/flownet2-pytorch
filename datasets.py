@@ -384,10 +384,11 @@ class ImagesFromFolderEQ(data.Dataset):
             im1_path = os.path.join(image_root, im1)
             im2_path = os.path.join(image_root, im2)
             self.image_list += [ [ im1_path, im2_path ] ]
-            self.flow_list += [join(
-                    flow_root,
-                    '{}.flo'.format(im2.split('_x')[0])
-                )]
+            if not self.args.inference:
+                self.flow_list += [join(
+                        flow_root,
+                        '{}.flo'.format(im2.split('_x')[0])
+                    )]
 
     self.size = len(self.image_list)
 
@@ -399,7 +400,8 @@ class ImagesFromFolderEQ(data.Dataset):
 
     args.inference_size = self.render_size
 
-    assert (len(self.image_list) == len(self.flow_list))
+    if not self.args.inference:
+        assert (len(self.image_list) == len(self.flow_list))
 
   def __getitem__(self, index):
     index = index % self.size
@@ -418,12 +420,15 @@ class ImagesFromFolderEQ(data.Dataset):
     images = np.array(images).transpose(3,0,1,2)
     images = torch.from_numpy(images.astype(np.float32))
 
-    flow = frame_utils.read_gen(self.flow_list[index])
-    flow = cropper(flow)
-    flow = flow.transpose(2,0,1)
-    flow = torch.from_numpy(flow.astype(np.float32))
+    if not self.args.inference:
+        flow = frame_utils.read_gen(self.flow_list[index])
+        flow = cropper(flow)
+        flow = flow.transpose(2,0,1)
+        flow = torch.from_numpy(flow.astype(np.float32))
 
-    return [images], [flow]
+        return [images], [flow]
+    else:
+        return [images], [torch.zeros(images.size()[0:1] + (2,) + images.size()[-2:])]
 
   def __len__(self):
     return self.size * self.replicates
