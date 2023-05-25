@@ -387,7 +387,7 @@ class ImagesFromFolderEQ(data.Dataset):
             if not self.args.inference:
                 self.flow_list += [join(
                         flow_root,
-                        '{}.flo'.format(im2.split('_x')[0])
+                        '{}.flo'.format(splitext(im2)[0]) # '{}.flo'.format(im2.split('_x')[0])
                     )]
 
     self.size = len(self.image_list)

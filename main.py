@@ -389,9 +389,12 @@ if __name__ == '__main__':
             statistics.append(loss_values)
             # import IPython; IPython.embed()
             if args.save_flow or args.render_validation:
-                for i in range(args.inference_batch_size):
+                # Fix for incorrect file name indexing (https://github.com/NVIDIA/flownet2-pytorch/commit/be9c879848f20134bc2508e7b9edb8ab01126ae1)
+                # for i in range(args.inference_batch_size):
+                for i in range(args.effective_inference_batch_size):
                     _pflow = output[i].data.cpu().numpy().transpose(1, 2, 0)
-                    flow_utils.writeFlow( join(flow_folder, '%06d.flo'%(batch_idx * args.inference_batch_size + i)),  _pflow)
+                    # flow_utils.writeFlow( join(flow_folder, '%06d.flo'%(batch_idx * args.inference_batch_size + i)),  _pflow)
+                    flow_utils.writeFlow( join(flow_folder, '%06d.flo'%(batch_idx * args.effective_inference_batch_size + i)),  _pflow)
                     
                     # You can comment out the plt block in visulize_flow_file() for real-time visualization
                     if args.inference_visualize:
