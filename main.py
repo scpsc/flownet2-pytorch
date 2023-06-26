@@ -64,7 +64,7 @@ if __name__ == '__main__':
     # Custom arguments ############################
     parser.add_argument('--freeze', default=-1, type=int,
         help='freeze the parts of the network below the indicated number')
-    parser.add_argument('--reinit_fusion', action=store_true,
+    parser.add_argument('--reinit_fusion', action='store_true',
         help=('re-initialize the weights and biases for the Fusion network, in'
             'FlowNet2 (e.g. when using a checkpoint)'))
     parser.add_argument('--limit_predic', default=-1, type=int,
