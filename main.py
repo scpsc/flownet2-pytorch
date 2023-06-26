@@ -61,6 +61,16 @@ if __name__ == '__main__':
     parser.add_argument('--fp16', action='store_true', help='Run model in pseudo-fp16 mode (fp16 storage fp32 math).')
     parser.add_argument('--fp16_scale', type=float, default=1024., help='Loss scaling, positive power of 2 values can improve fp16 convergence.')
 
+    # Custom arguments ############################
+    parser.add_argument('--freeze', default=-1, type=int,
+        help='freeze the parts of the network below the indicated number')
+    parser.add_argument('--reinit_fusion', action=store_true,
+        help=('re-initialize the weights and biases for the Fusion network, in'
+            'FlowNet2 (e.g. when using a checkpoint)'))
+    parser.add_argument('--limit_predic', default=-1, type=int,
+        help='in prediction mode, stop the processing after N examples')
+    ###############################################
+
     tools.add_arguments_for_module(parser, models, argument_for_class='model', default='FlowNet2')
 
     tools.add_arguments_for_module(parser, losses, argument_for_class='loss', default='L1Loss')
@@ -180,6 +190,25 @@ if __name__ == '__main__':
 
         model_and_loss = ModelAndLoss(args)
 
+        # Freeze some sub-networks ###################################
+        if args.freeze >= 0:
+            print("Freezing some parts of the network")
+            # print(model_and_loss.model)
+
+            child_counter = 0
+            for child, (name, _) in zip(model_and_loss.model.children(),
+                    model_and_loss.model.named_children()):
+                if child_counter <= args.freeze:
+                    for param in child.parameters():
+                        param.requires_grad = False
+                    print("  ", name, "is frozen")
+                else:
+                    print("  ", name, "is not frozen")
+                child_counter += 1
+
+            print()
+        ##############################################################
+
         block.log('Effective Batch Size: {}'.format(args.effective_batch_size))
         block.log('Number of parameters: {}'.format(sum([p.data.nelement() if p.requires_grad else 0 for p in model_and_loss.parameters()])))
 
@@ -220,6 +249,24 @@ if __name__ == '__main__':
 
         else:
             block.log("Random initialization")
+
+        # Re-initialize FlowNetFusion's weights ######################
+        if args.reinit_fusion:
+            if args.model == 'FlowNet2':
+                for child, (name, _) in zip(
+                        model_and_loss.module.model.children(),
+                        model_and_loss.module.model.named_children()):
+                    if name == 'flownetfusion':
+                        for c in child.children():
+                            sd = c.state_dict()
+                            if '0.weight' in sd:
+                                nn.init.xavier_uniform_(sd['0.weight'])
+                                nn.init.uniform_(sd['0.bias'])
+                            else:
+                                nn.init.xavier_uniform_(sd['weight'])
+                                nn.init.uniform_(sd['bias'])
+                        print("    ", name, "re-initialized")
+        ##############################################################
 
         block.log("Initializing save directory: {}".format(args.save))
         if not os.path.exists(args.save):
@@ -405,7 +452,10 @@ if __name__ == '__main__':
             progress.set_description('Inference Averages for Epoch {}: '.format(epoch) + tools.format_dictionary_of_losses(loss_labels, np.array(statistics).mean(axis=0)))
             progress.update(1)
 
-            if batch_idx == (args.inference_n_batches - 1):
+            if args.limit_predic >= 0:
+                if batch_idx == args.limit_predic:
+                    break
+            elif batch_idx == (args.inference_n_batches - 1):
                 break
 
         progress.close()
