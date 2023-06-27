@@ -65,7 +65,10 @@ if __name__ == '__main__':
     parser.add_argument('--freeze', default=-1, type=int,
         help='freeze the parts of the network below the indicated number')
     parser.add_argument('--reinit_fusion', action='store_true',
-        help=('re-initialize the weights and biases for the Fusion network, in'
+        help=('re-initialize the weights and biases of the Fusion network, in'
+            'FlowNet2 (e.g. when using a checkpoint)'))
+    parser.add_argument('--reinit_sd', action='store_true',
+        help=('re-initialize the weights and biases of FlowNet2-SD, in '
             'FlowNet2 (e.g. when using a checkpoint)'))
     parser.add_argument('--limit_predic', default=-1, type=int,
         help='in prediction mode, stop the processing after N examples')
@@ -251,20 +254,16 @@ if __name__ == '__main__':
             block.log("Random initialization")
 
         # Re-initialize FlowNetFusion's weights ######################
-        if args.reinit_fusion:
-            if args.model == 'FlowNet2':
-                for child, (name, _) in zip(
-                        model_and_loss.module.model.children(),
-                        model_and_loss.module.model.named_children()):
-                    if name == 'flownetfusion':
-                        for c in child.children():
-                            sd = c.state_dict()
-                            if '0.weight' in sd:
-                                nn.init.xavier_uniform_(sd['0.weight'])
-                                nn.init.uniform_(sd['0.bias'])
-                            else:
-                                nn.init.xavier_uniform_(sd['weight'])
-                                nn.init.uniform_(sd['bias'])
+        if args.reinit_fusion or args.reinit_sd:
+            for m, (name, _) in zip(
+                    model_and_loss.module.model.modules(),
+                    model_and_loss.module.model.named_modules()):
+                if name.startswith('flownets_d') and args.reinit_sd or \
+                        name.startswith('flownetfusion') and args.reinit_fusion:
+                    if isinstance(m, nn.Conv2d) or \
+                            isinstance(m, nn.ConvTranspose2d):
+                        nn.init.xavier_uniform_(m.weight)
+                        nn.init.uniform_(m.bias)
                         print("    ", name, "re-initialized")
         ##############################################################
 
