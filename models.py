@@ -182,7 +182,12 @@ class FlowNet2(nn.Module):
         # if not flownetfusion_flow.volatile:
         #     flownetfusion_flow.register_hook(save_grad(self.args.grads, 'flownetfusion_flow'))
 
-        return flownetfusion_flow
+        # Adding two possible outputs (CSS and SD) to the flownetfusion_flow
+        # (i.e. the full network) output.
+        # Choose one and comment the others
+        return flownetfusion_flow # Normal output: Flownet2
+        # return flownets2_flow # Alternative output: FlowNet2-CSS
+        # return self.upsample1(flownetsd_flow2*self.dic_flow) # FlowNet2-SD
 
 class FlowNet2C(FlowNetC.FlowNetC):
     def __init__(self, args, batchNorm=False, div_flow=20):
